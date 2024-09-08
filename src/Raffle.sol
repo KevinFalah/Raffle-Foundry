@@ -13,6 +13,12 @@ contract Raffle is VRFConsumerBaseV2Plus {
 
     error Raffle__MoreEthToEnterRaffle();
     error Raffle__TransferFailed();
+    error Raffle__RaffleNotOpen();
+
+    enum RaffleState {
+        OPEN,
+        CALCULATING
+    }
 
     uint32 private constant NUM_WORDS = 1;
     uint16 private constant REQUEST_CONFIRMATION = 3;
@@ -25,21 +31,28 @@ contract Raffle is VRFConsumerBaseV2Plus {
     address payable[] private s_players;
     uint256 private s_lastTimeStamp;
     address private s_recentWinner;
+    RaffleState private s_raffleState;
 
     event enteredRaffle (address indexed player);
 
     constructor (uint256 entraceFee, uint256 interval, address _vrfCoordinator, bytes32 gasLane, uint256 subscriptionId, uint32 callbackgaslimit) VRFConsumerBaseV2Plus(_vrfCoordinator) {
         i_entranceFee = entraceFee;
         i_interval = interval;
-        s_lastTimeStamp = block.timestamp;
         i_keyHash = gasLane;
         i_subscriptionId = subscriptionId;
         i_callbackGasLimit = callbackgaslimit;
+
+        s_lastTimeStamp = block.timestamp;
+        s_raffleState = RaffleState.OPEN;
     }
 
     function enterRaffle() public payable {
         if (msg.value < i_entranceFee) {
             revert Raffle__MoreEthToEnterRaffle();
+        }
+
+        if (s_raffleState != RaffleState.OPEN) {
+            revert Raffle__RaffleNotOpen();
         }
 
         s_players.push(payable(msg.sender));
@@ -49,6 +62,7 @@ contract Raffle is VRFConsumerBaseV2Plus {
         if ((block.timestamp - s_lastTimeStamp) < i_interval) {
             revert();
         }
+       s_raffleState = RaffleState.CALCULATING;
 
        uint256 requestId = s_vrfCoordinator.requestRandomWords(
            VRFV2PlusClient.RandomWordsRequest({
@@ -70,7 +84,7 @@ contract Raffle is VRFConsumerBaseV2Plus {
     uint256 indexOfWinner = randomWords[0] % s_players.length; // 32131232133239 % 3 = 3
     address payable recentWinner = s_players[indexOfWinner];
     s_recentWinner = recentWinner;
-
+    s_raffleState = RaffleState.OPEN;
     (bool sent, ) = recentWinner.call{value: address(this).balance}("");
     if (!sent) {
         revert Raffle__TransferFailed();
