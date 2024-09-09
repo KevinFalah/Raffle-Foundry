@@ -9,6 +9,7 @@ import "lib/chainlink-brownie-contracts/contracts/src/v0.8/vrf/dev/interfaces/IV
 // @author Kevin Falah
 // @notice This contract is for creating a sample raffle
 // @dev Implements Chainlink contract 
+
 contract Raffle is VRFConsumerBaseV2Plus {
 
     error Raffle__MoreEthToEnterRaffle();
@@ -33,7 +34,8 @@ contract Raffle is VRFConsumerBaseV2Plus {
     address private s_recentWinner;
     RaffleState private s_raffleState;
 
-    event enteredRaffle (address indexed player);
+    event raffleEntered (address indexed player);
+    event winnerPicked (address indexed winner);
 
     constructor (uint256 entraceFee, uint256 interval, address _vrfCoordinator, bytes32 gasLane, uint256 subscriptionId, uint32 callbackgaslimit) VRFConsumerBaseV2Plus(_vrfCoordinator) {
         i_entranceFee = entraceFee;
@@ -56,6 +58,7 @@ contract Raffle is VRFConsumerBaseV2Plus {
         }
 
         s_players.push(payable(msg.sender));
+        emit raffleEntered(msg.sender);
     }
 
     function pickWinner() public {
@@ -81,14 +84,17 @@ contract Raffle is VRFConsumerBaseV2Plus {
     }
 
   function fulfillRandomWords(uint256 requestId, uint256[] calldata randomWords) internal override {
-    uint256 indexOfWinner = randomWords[0] % s_players.length; // 32131232133239 % 3 = 3
+    uint256 indexOfWinner = randomWords[0] % s_players.length;
     address payable recentWinner = s_players[indexOfWinner];
     s_recentWinner = recentWinner;
     s_raffleState = RaffleState.OPEN;
+
     (bool sent, ) = recentWinner.call{value: address(this).balance}("");
     if (!sent) {
         revert Raffle__TransferFailed();
     }
+
+    emit winnerPicked(recentWinner);
   }
 
     // Getter Functions
