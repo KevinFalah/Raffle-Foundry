@@ -61,10 +61,27 @@ contract Raffle is VRFConsumerBaseV2Plus {
         emit raffleEntered(msg.sender);
     }
 
-    function pickWinner() public {
-        if ((block.timestamp - s_lastTimeStamp) < i_interval) {
-            revert();
+    // @dev Check every following conditions :
+    // 1. Interval more than time passed
+    // 2. Raffle is Open
+    // 3. Has players
+    
+    function checkUpkeep(bytes memory /* checkData */) public view returns(bool upkeepNeeded, bytes memory /* performData */) {
+        bool timePassed = (block.timestamp - s_lastTimeStamp) >= i_interval;
+        bool raffleOpen = s_raffleState == RaffleState.OPEN;
+        bool hasPlayers = s_players.length > 0;
+
+        upkeepNeeded = timePassed && raffleOpen && hasPlayers;
+        return (upkeepNeeded, "");
+    }
+
+    function performUpkeep() external {
+
+        (bool upkeepNeed, ) = checkUpkeep("");
+        if (!upkeepNeed) {
+            return;
         }
+
        s_raffleState = RaffleState.CALCULATING;
 
        uint256 requestId = s_vrfCoordinator.requestRandomWords(
@@ -84,17 +101,21 @@ contract Raffle is VRFConsumerBaseV2Plus {
     }
 
   function fulfillRandomWords(uint256 requestId, uint256[] calldata randomWords) internal override {
+    // Checks
+
+    // Effects
     uint256 indexOfWinner = randomWords[0] % s_players.length;
     address payable recentWinner = s_players[indexOfWinner];
     s_recentWinner = recentWinner;
     s_raffleState = RaffleState.OPEN;
+    emit winnerPicked(recentWinner);
 
+    // Interactions
     (bool sent, ) = recentWinner.call{value: address(this).balance}("");
     if (!sent) {
         revert Raffle__TransferFailed();
     }
 
-    emit winnerPicked(recentWinner);
   }
 
     // Getter Functions
