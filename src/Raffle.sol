@@ -15,6 +15,7 @@ contract Raffle is VRFConsumerBaseV2Plus {
     error Raffle__MoreEthToEnterRaffle();
     error Raffle__TransferFailed();
     error Raffle__RaffleNotOpen();
+    error Raffle__UpkeepNotNeeded(uint256 balance, uint256 playersLength, RaffleState raffleState);
 
     enum RaffleState {
         OPEN,
@@ -79,7 +80,7 @@ contract Raffle is VRFConsumerBaseV2Plus {
 
         (bool upkeepNeed, ) = checkUpkeep("");
         if (!upkeepNeed) {
-            return;
+            revert Raffle__UpkeepNotNeeded(address(this).balance, s_players.length, s_raffleState);
         }
 
        s_raffleState = RaffleState.CALCULATING;
