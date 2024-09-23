@@ -15,7 +15,7 @@ contract Raffle is VRFConsumerBaseV2Plus {
     error Raffle__MoreEthToEnterRaffle();
     error Raffle__TransferFailed();
     error Raffle__RaffleNotOpen();
-    error Raffle__UpkeepNotNeeded(uint256 balance, uint256 playersLength, RaffleState raffleState, uint256 interval);
+    error Raffle__UpkeepNotNeeded(uint256 balance, uint256 playersLength, RaffleState raffleState);
 
     enum RaffleState {
         OPEN,
@@ -37,6 +37,7 @@ contract Raffle is VRFConsumerBaseV2Plus {
 
     event RaffleEntered (address indexed player);
     event WinnerPicked (address indexed winner);
+    event RequestedRaffleWinner (uint256 indexed requestId);
 
     constructor (uint256 entraceFee, uint256 interval, address _vrfCoordinator, bytes32 gasLane, uint256 subscriptionId, uint32 callbackgaslimit) VRFConsumerBaseV2Plus(_vrfCoordinator) {
         i_entranceFee = entraceFee;
@@ -82,7 +83,7 @@ contract Raffle is VRFConsumerBaseV2Plus {
 
         (bool upkeepNeed, ) = checkUpkeep("");
         if (!upkeepNeed) {
-            revert Raffle__UpkeepNotNeeded(address(this).balance, s_players.length, s_raffleState, block.timestamp - s_lastTimeStamp);
+            revert Raffle__UpkeepNotNeeded(address(this).balance, s_players.length, s_raffleState);
         }
 
        s_raffleState = RaffleState.CALCULATING;
@@ -101,6 +102,8 @@ contract Raffle is VRFConsumerBaseV2Plus {
             }) 
         );
 
+       emit RequestedRaffleWinner(requestId);
+
     }
 
   function fulfillRandomWords(uint256 /*requestId*/, 
@@ -112,6 +115,8 @@ contract Raffle is VRFConsumerBaseV2Plus {
     address payable recentWinner = s_players[indexOfWinner];
     s_recentWinner = recentWinner;
     s_raffleState = RaffleState.OPEN;
+    s_players = new address payable[](0);
+    s_lastTimeStamp = block.timestamp;
     emit WinnerPicked(recentWinner);
 
     // Interactions
@@ -134,6 +139,14 @@ contract Raffle is VRFConsumerBaseV2Plus {
 
     function getPlayer(uint256 indexOfPlayer) external view returns (address) {
         return s_players[indexOfPlayer];
+    }
+
+    function getLastTimeStamp() external view returns (uint256) {
+        return s_lastTimeStamp;
+    }
+
+    function getRecentWinner() external view returns (address) {
+        return s_recentWinner;
     }
 }
 
