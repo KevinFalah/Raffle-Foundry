@@ -58,7 +58,7 @@ contract HelperConfig is Script, CodeConstants {
             interval: 30, // 30 seconds
             vrfCoordinator: 0x9DdfaCa8183c41ad55329BdeeD9F6A8d53168B1B,
             gasLane: 0x787d74caea10b2b357790d5b5247c2f63d1d91572a9846f780606e4d953677ae,
-            subscriptionId: 0,
+            subscriptionId: 1927791659897238101799788574519281544467531632192530852564911123577883019532,
             callbackgaslimit: 500000, // 500.000
             link: 0x779877A7B0D9E8603169DdbD7836e478b4624789,
             account: 0x2040cA5Ad0CD6922FA032B3Cd1FC3a78e2D9Fd7D
